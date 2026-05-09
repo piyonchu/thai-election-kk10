@@ -173,7 +173,7 @@ if macro_view_mode == "📍 Dynamic Cluster Map":
             st.info("👈 Zoom and pan around the map to generate regional summaries.")
 
 # =========================================================
-# VIEW 2 — 3D GPU DENSITY (FIXED AGGREGATION)
+# VIEW 2 — 3D GPU DENSITY (FIXED AGGREGATION & TOOLTIP)
 # =========================================================
 elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     st.header("🏙️ 3D Spatial Density Engine")
@@ -184,7 +184,6 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     - WebGL rendering = GPU accelerated analytics
     """)
 
-    # FIX 1: Actually include the location text columns so the tooltip can read them
     df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots', 'District', 'Subdistrict']].copy()
 
     layer = pdk.Layer(
@@ -192,7 +191,6 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
         df_hex,
         get_position=["Longitude", "Latitude"],
         auto_highlight=True,
-        # FIX 2: Crank the elevation scale way up so the towers are distinct and visible
         elevation_scale=50, 
         pickable=True,
         extruded=True,
@@ -215,10 +213,11 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
         tooltip={
             "html": """
                 <div style="font-family: Arial, sans-serif;">
-                    <b style="color: #F47920; font-size: 16px;">📍 Hexagonal Regional Bin</b><br/>
+                    <b style="color: #F47920; font-size: 16px;">📍 {points.0.District} District</b><br/>
+                    <b style="color: #cccccc;">ตำบล (Subdistrict): {points.0.Subdistrict}</b>
                     <hr style="margin: 8px 0; border: 1px solid #555;">
-                    <b>Total Voters (Summed):</b> {elevationValue} voters<br/>
-                    <b>Total Invalid Ballots (Summed):</b> {colorValue} ballots
+                    <b>Total Voters (Summed Height):</b> {elevationValue} voters<br/>
+                    <b>Total Invalid Ballots (Summed Color):</b> {colorValue} ballots
                 </div>
             """,
             "style": {
