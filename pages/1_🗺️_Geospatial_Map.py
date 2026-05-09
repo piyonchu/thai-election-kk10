@@ -184,7 +184,8 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     - WebGL rendering = GPU accelerated analytics
     """)
 
-    df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots']].copy()
+    # 1. We must add 'District' and 'Subdistrict' to the dataset handed to PyDeck
+    df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots', 'District', 'Subdistrict']].copy()
 
     layer = pdk.Layer(
         "HexagonLayer",
@@ -205,24 +206,27 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
 
     view_state = pdk.ViewState(longitude=map_center[1], latitude=map_center[0], zoom=10, min_zoom=5, max_zoom=15, pitch=45, bearing=-27.36)
 
+    # 2. Update the tooltip to extract the strings from the underlying 'points' array
     deck = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
         tooltip={
             "html": """
                 <div style="font-family: Arial, sans-serif;">
-                    <b style="color: #F47920;">Aggregated Hex Bin</b><br/>
-                    <hr style="margin: 5px 0; border: 1px solid #555;">
-                    <b>Voters Showed Up:</b> {elevationValue} people<br/>
-                    <b>Density / Error Metric:</b> {colorValue}
+                    <b style="color: #F47920; font-size: 16px;">📍 {points.0.District} District</b><br/>
+                    <b style="color: #cccccc;">ตำบล (Subdistrict): {points.0.Subdistrict}</b>
+                    <hr style="margin: 8px 0; border: 1px solid #555;">
+                    <b>Total Voters (Height):</b> {elevationValue} people<br/>
+                    <b>Error Metric (Color):</b> {colorValue}
                 </div>
             """,
             "style": {
-                "backgroundColor": "#222222",
+                "backgroundColor": "#1e1e1e",
                 "color": "#ffffff",
-                "padding": "12px",
+                "padding": "15px",
                 "borderRadius": "8px",
-                "boxShadow": "0px 4px 10px rgba(0,0,0,0.5)"
+                "boxShadow": "0px 4px 15px rgba(0,0,0,0.7)",
+                "border": "1px solid #333"
             }
         }
     )
