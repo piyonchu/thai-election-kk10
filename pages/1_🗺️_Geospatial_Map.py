@@ -223,30 +223,38 @@ with tab3:
     st.markdown("---")
 
     if view_mode == "🔥 Party Support Heatmap":
-        st.write("**Thermal mapping of vote concentration.** Brightly glowing areas indicate massive regional support.")
+        st.write("**Thermal mapping of vote concentration.**")
         
-        # Dropdown to select the party
         top_parties = df_merged.groupby('Party_Name')['Score'].sum().nlargest(6).index
         selected_party = st.selectbox("Select Party to Visualize:", top_parties)
 
-        # Filter data for selected party
         party_data = df_merged[(df_merged['Party_Name'] == selected_party) & (df_merged['Score'] > 0)].copy()
 
         if not party_data.empty:
+            # The Heatmap Layer
             heatmap_layer = pdk.Layer(
                 "HeatmapLayer",
                 data=party_data,
                 opacity=0.9,
                 get_position=["Longitude", "Latitude"],
-                aggregation="SUM",
+                aggregation=pdk.types.String("SUM"),
                 get_weight="Score",
-                radiusPixels=50, # Controls how wide the thermal glow spreads
+                radius_pixels=25,  # Reduced size to prevent massive blur
+                intensity=1,
+                threshold=0.03,    # Hides the very faint edges that cause the 'haze'
             )
 
+            # The Deck
             deck_heatmap = pdk.Deck(
                 layers=[heatmap_layer],
-                initial_view_state=pdk.ViewState(longitude=map_center[1], latitude=map_center[0], zoom=10, pitch=0),
-                map_style="mapbox://styles/mapbox/dark-v10" # Dark mode makes the thermal colors pop perfectly
+                initial_view_state=pdk.ViewState(
+                    longitude=map_center[1], 
+                    latitude=map_center[0], 
+                    zoom=10, 
+                    pitch=0
+                ),
+                # CHANGED: Use a standard style to avoid the white background bug
+                map_style="dark" 
             )
             st.pydeck_chart(deck_heatmap, use_container_width=True)
         else:
