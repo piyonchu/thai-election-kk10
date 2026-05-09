@@ -184,15 +184,16 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     - WebGL rendering = GPU accelerated analytics
     """)
 
-    df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots']].copy()
+    # FIX 1: Actually include the location text columns so the tooltip can read them
+    df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots', 'District', 'Subdistrict']].copy()
 
     layer = pdk.Layer(
         "HexagonLayer",
         df_hex,
         get_position=["Longitude", "Latitude"],
         auto_highlight=True,
-        # Reduced elevation scale because we are now correctly summing thousands of voters, not counting single units
-        elevation_scale=2, 
+        # FIX 2: Crank the elevation scale way up so the towers are distinct and visible
+        elevation_scale=50, 
         pickable=True,
         extruded=True,
         coverage=1,
@@ -200,7 +201,6 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
             [255, 255, 204], [255, 237, 160], [254, 217, 118],
             [254, 178, 76], [253, 141, 60], [227, 26, 28]
         ],
-        # EXACT PYDECK AGGREGATION KWARGS
         get_elevation_weight="Voters_Showed_Up",
         elevation_aggregation='"SUM"',
         get_color_weight="Invalid_Ballots",
