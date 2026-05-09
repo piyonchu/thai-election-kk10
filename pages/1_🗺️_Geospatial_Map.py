@@ -242,9 +242,9 @@ elif macro_view_mode == "🔥 Electoral Heatmaps & Battlegrounds":
                 get_position=["Longitude", "Latitude"],
                 aggregation="SUM",
                 get_weight="Score",
-                radiusPixels=25, 
+                radiusPixels=50, 
                 intensity=1,
-                threshold=0.09,
+                threshold=0.25,
             )
 
             deck_heatmap = pdk.Deck(
