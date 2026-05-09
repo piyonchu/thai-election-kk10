@@ -173,51 +173,52 @@ if macro_view_mode == "📍 Dynamic Cluster Map":
             st.info("👈 Zoom and pan around the map to generate regional summaries.")
 
 # =========================================================
-# VIEW 2 — 3D GPU DENSITY
+# VIEW 2 — 3D GPU DENSITY (FIXED AGGREGATION)
 # =========================================================
 elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     st.header("🏙️ 3D Spatial Density Engine")
     st.write("""
     This model aggregates localized polling data into a **3D Hexagonal Grid**.
-    - Tower height = turnout volume
-    - Tower color = density concentration
+    - Tower height = Total Voter Turnout (SUM)
+    - Tower color = Total Invalid Ballots (SUM)
     - WebGL rendering = GPU accelerated analytics
     """)
 
-    # 1. We must add 'District' and 'Subdistrict' to the dataset handed to PyDeck
-    df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots', 'District', 'Subdistrict']].copy()
+    df_hex = df_map[['Longitude', 'Latitude', 'Voters_Showed_Up', 'Invalid_Ballots']].copy()
 
     layer = pdk.Layer(
         "HexagonLayer",
         df_hex,
         get_position=["Longitude", "Latitude"],
         auto_highlight=True,
-        elevation_scale=10,
+        # Reduced elevation scale because we are now correctly summing thousands of voters, not counting single units
+        elevation_scale=2, 
         pickable=True,
-        elevation_range=[0, 3000],
         extruded=True,
         coverage=1,
         color_range=[
             [255, 255, 204], [255, 237, 160], [254, 217, 118],
             [254, 178, 76], [253, 141, 60], [227, 26, 28]
         ],
-        get_weight="Voters_Showed_Up",
+        # EXACT PYDECK AGGREGATION KWARGS
+        get_elevation_weight="Voters_Showed_Up",
+        elevation_aggregation='"SUM"',
+        get_color_weight="Invalid_Ballots",
+        color_aggregation='"SUM"',
     )
 
     view_state = pdk.ViewState(longitude=map_center[1], latitude=map_center[0], zoom=10, min_zoom=5, max_zoom=15, pitch=45, bearing=-27.36)
 
-    # 2. Update the tooltip to extract the strings from the underlying 'points' array
     deck = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
         tooltip={
             "html": """
                 <div style="font-family: Arial, sans-serif;">
-                    <b style="color: #F47920; font-size: 16px;">📍 {points.0.District} District</b><br/>
-                    <b style="color: #cccccc;">ตำบล (Subdistrict): {points.0.Subdistrict}</b>
+                    <b style="color: #F47920; font-size: 16px;">📍 Hexagonal Regional Bin</b><br/>
                     <hr style="margin: 8px 0; border: 1px solid #555;">
-                    <b>Total Voters (Height):</b> {elevationValue} people<br/>
-                    <b>Error Metric (Color):</b> {colorValue}
+                    <b>Total Voters (Summed):</b> {elevationValue} voters<br/>
+                    <b>Total Invalid Ballots (Summed):</b> {colorValue} ballots
                 </div>
             """,
             "style": {
