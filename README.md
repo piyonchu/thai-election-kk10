@@ -82,9 +82,30 @@ It is recommended to use a virtual environment.
 ```bash
 pip install -r requirements.txt
 ```
+3. **Download the PDF data:**
 
+The original PDF ballot documents (~1.5 GB) are not included in this repository due to GitHub size limits. Download them separately:
 
-3. **Launch the application:**
+📁 **[Download from Google Drive](https://drive.google.com/drive/folders/1wrya7xjIXfQbefILKzi6myTa92pJ0m07?usp=drive_link)**
+
+Extract the archive and place the `เขตเลือกตั้งที่10` folder inside the `data/` directory so the structure looks like:
+
+\`\`\`text
+election-project/
+└── data/
+    ├── เขตเลือกตั้งที่10/      ← extracted PDFs go here
+    │   ├── อำเภอ.../
+    │   │   └── ตำบล.../
+    │   │       └── *.pdf
+    │   └── ...
+    └── results/                 ← already in repo
+        ├── bch/
+        └── normal/
+\`\`\`
+
+> **Note:** The application will still run without the PDFs — the OCR Data Cleaning page just won't show the document preview alongside the JSON editor. Other analytical modules work entirely from the JSON/CSV data.
+
+4. **Launch the application:**
 ```bash
 streamlit run app.py
 ```
