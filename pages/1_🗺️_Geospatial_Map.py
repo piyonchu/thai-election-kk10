@@ -71,18 +71,26 @@ def get_hex_color(party):
     return PARTY_COLORS_HEX.get(party, "#808080")
 
 # =========================================================
-# TABS
+# STATE-BASED ROUTING (Fixes the WebGL 0x0 Pixel Bug)
 # =========================================================
-tab1, tab2, tab3 = st.tabs([
-    "📍 Dynamic Cluster Map",
-    "🏙️ 3D Hexagonal Density",
-    "🔥 Electoral Heatmaps & Battlegrounds"
-])
+st.markdown("### Select Geospatial View")
+macro_view_mode = st.radio(
+    "Select Geospatial Layer:",
+    [
+        "📍 Dynamic Cluster Map", 
+        "🏙️ 3D Hexagonal Density", 
+        "🔥 Electoral Heatmaps & Battlegrounds"
+    ],
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
+st.markdown("---")
 
 # =========================================================
-# TAB 1 — DYNAMIC CLUSTER MAP (Remains the same highly-optimized code)
+# VIEW 1 — DYNAMIC CLUSTER MAP
 # =========================================================
-with tab1:
+if macro_view_mode == "📍 Dynamic Cluster Map":
     col_map, col_info = st.columns([7, 3])
 
     with col_map:
@@ -99,7 +107,6 @@ with tab1:
             ).add_to(marker_cluster)
 
         marker_cluster.add_to(m)
-
         map_data = st_folium(m, width="100%", height=650, returned_objects=["bounds", "last_object_clicked"])
 
     with col_info:
@@ -133,7 +140,7 @@ with tab1:
                 st.markdown("---")
                 st.markdown("### Full Party Scoreboard")
                 unit_scores = df_scores[df_scores['Unit_ID'] == unit['Unit_ID']].sort_values(by='Score', ascending=False)
-                st.dataframe(unit_scores[['Party_Number', 'Party_Name', 'Score']].reset_index(drop=True), use_container_width=True)
+                st.dataframe(unit_scores[['Party_Number', 'Party_Name', 'Score']].reset_index(drop=True), width="stretch")
 
                 if st.button("Clear Selection"):
                     st.rerun()
@@ -161,15 +168,14 @@ with tab1:
                 st.markdown("### Party Performance in Visible Area")
                 visible_scores = df_scores[df_scores['Unit_ID'].isin(visible_units['Unit_ID'])]
                 regional_totals = visible_scores.groupby('Party_Name')['Score'].sum().sort_values(ascending=False).head(10).reset_index()
-                st.dataframe(regional_totals.style.background_gradient(cmap='Blues'), use_container_width=True)
-
+                st.dataframe(regional_totals.style.background_gradient(cmap='Blues'), width="stretch")
         else:
             st.info("👈 Zoom and pan around the map to generate regional summaries.")
 
 # =========================================================
-# TAB 2 — 3D GPU DENSITY
+# VIEW 2 — 3D GPU DENSITY
 # =========================================================
-with tab2:
+elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     st.header("🏙️ 3D Spatial Density Engine")
     st.write("""
     This model aggregates localized polling data into a **3D Hexagonal Grid**.
@@ -204,26 +210,24 @@ with tab2:
         initial_view_state=view_state,
         tooltip={"text": "Elevation: Turnout Volume\nColor: Density"}
     )
-    st.pydeck_chart(deck, use_container_width=True)
+    st.pydeck_chart(deck, width="stretch")
 
 # =========================================================
-# TAB 3 — HEATMAPS & BATTLEGROUNDS (New Replacement)
+# VIEW 3 — HEATMAPS & BATTLEGROUNDS
 # =========================================================
-with tab3:
+elif macro_view_mode == "🔥 Electoral Heatmaps & Battlegrounds":
     st.header("🔥 Electoral Heatmaps & Battlegrounds")
     st.write("Visualizing spatial intensity and highly contested polling stations.")
 
-    # Let the user choose between the two new spatial tools
-    view_mode = st.radio(
+    sub_view_mode = st.radio(
         "Select Spatial Layer:", 
         ["🔥 Party Support Heatmap", "⚔️ Hyper-Competitive Battlegrounds (Margin < 5%)"], 
         horizontal=True
     )
-
     st.markdown("---")
 
-    if view_mode == "🔥 Party Support Heatmap":
-        st.write("**Thermal mapping of vote concentration.**")
+    if sub_view_mode == "🔥 Party Support Heatmap":
+        st.write("**Thermal mapping of vote concentration.** Brightly glowing areas indicate massive regional support.")
         
         top_parties = df_merged.groupby('Party_Name')['Score'].sum().nlargest(6).index
         selected_party = st.selectbox("Select Party to Visualize:", top_parties)
@@ -231,42 +235,33 @@ with tab3:
         party_data = df_merged[(df_merged['Party_Name'] == selected_party) & (df_merged['Score'] > 0)].copy()
 
         if not party_data.empty:
-            # The Heatmap Layer
             heatmap_layer = pdk.Layer(
                 "HeatmapLayer",
                 data=party_data,
                 opacity=0.9,
                 get_position=["Longitude", "Latitude"],
-                aggregation=pdk.types.String("SUM"),
+                aggregation="SUM",
                 get_weight="Score",
-                radius_pixels=25,  # Reduced size to prevent massive blur
+                radiusPixels=25, 
                 intensity=1,
-                threshold=0.03,    # Hides the very faint edges that cause the 'haze'
+                threshold=0.09,
             )
 
-            # The Deck
             deck_heatmap = pdk.Deck(
                 layers=[heatmap_layer],
-                initial_view_state=pdk.ViewState(
-                    longitude=map_center[1], 
-                    latitude=map_center[0], 
-                    zoom=10, 
-                    pitch=0
-                ),
-                # CHANGED: Use a standard style to avoid the white background bug
-                map_style="dark" 
+                initial_view_state=pdk.ViewState(longitude=map_center[1], latitude=map_center[0], zoom=10, pitch=0),
+                map_style="mapbox://styles/mapbox/dark-v10" 
             )
-            st.pydeck_chart(deck_heatmap, use_container_width=True)
+            st.pydeck_chart(deck_heatmap, width="stretch")
         else:
             st.warning("No coordinate data available for this party.")
 
-    elif view_mode == "⚔️ Hyper-Competitive Battlegrounds (Margin < 5%)":
+    elif sub_view_mode == "⚔️ Hyper-Competitive Battlegrounds (Margin < 5%)":
         st.write("""
         **Knife-edge races.** These are specific polling units where the difference between the 1st place and 2nd place 
         party was less than 5%. In political science, these are critical units that decide the entire election.
         """)
         
-        # Calculate Margin of Victory
         sorted_scores = df_merged.sort_values(by=['Unit_ID', 'Score'], ascending=[True, False])
         ranked = sorted_scores.groupby('Unit_ID').head(2)
 
@@ -278,7 +273,7 @@ with tab3:
                 
                 if total_valid > 0:
                     margin_pct = (margin / total_valid) * 100
-                    if margin_pct < 5: # Filter for margin < 5%
+                    if margin_pct < 5: 
                         mov_data.append({
                             'Unit_ID': unit,
                             'Subdistrict': group.iloc[0]['Subdistrict'],
@@ -298,16 +293,15 @@ with tab3:
                 st.error(f"🚨 Detected {len(df_mov)} highly contested battleground units.")
                 st.dataframe(
                     df_mov[['Subdistrict', 'Winner', 'RunnerUp', 'Margin_Pct']].style.format({'Margin_Pct': '{:.2f}%'}).background_gradient(cmap='Reds_r'),
-                    use_container_width=True
+                    width="stretch"
                 )
                 
             with col_b2:
-                # Render pulsing red dots for battleground units
                 battle_layer = pdk.Layer(
                     "ScatterplotLayer",
                     data=df_mov,
                     get_position=["Longitude", "Latitude"],
-                    get_fill_color=[220, 20, 60, 200], # Crimson Red
+                    get_fill_color=[220, 20, 60, 200], 
                     get_radius=800,
                     pickable=True,
                 )
@@ -317,6 +311,6 @@ with tab3:
                     initial_view_state=pdk.ViewState(longitude=map_center[1], latitude=map_center[0], zoom=10, pitch=0),
                     tooltip={"text": "Subdistrict: {Subdistrict}\nWinner: {Winner}\nRunner Up: {RunnerUp}\nMargin: {Margin_Pct}%"}
                 )
-                st.pydeck_chart(deck_battle, use_container_width=True)
+                st.pydeck_chart(deck_battle, width="stretch")
         else:
             st.success("No hyper-competitive battlegrounds found. All units were won by a comfortable margin (> 5%).")
