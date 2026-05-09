@@ -191,10 +191,11 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
         df_hex,
         get_position=["Longitude", "Latitude"],
         auto_highlight=True,
-        elevation_scale=50, 
+        elevation_scale=10, 
         pickable=True,
         extruded=True,
         coverage=1,
+        radius=670,
         color_range=[
             [255, 255, 204], [255, 237, 160], [254, 217, 118],
             [254, 178, 76], [253, 141, 60], [227, 26, 28]
@@ -213,9 +214,6 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
         tooltip={
             "html": """
                 <div style="font-family: Arial, sans-serif;">
-                    <b style="color: #F47920; font-size: 16px;">📍 {points.0.District} District</b><br/>
-                    <b style="color: #cccccc;">ตำบล (Subdistrict): {points.0.Subdistrict}</b>
-                    <hr style="margin: 8px 0; border: 1px solid #555;">
                     <b>Total Voters (Summed Height):</b> {elevationValue} voters<br/>
                     <b>Total Invalid Ballots (Summed Color):</b> {colorValue} ballots
                 </div>
