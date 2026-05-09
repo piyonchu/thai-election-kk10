@@ -208,7 +208,23 @@ elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     deck = pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
-        tooltip={"text": "Elevation: Turnout Volume\nColor: Density"}
+        tooltip={
+            "html": """
+                <div style="font-family: Arial, sans-serif;">
+                    <b style="color: #F47920;">Aggregated Hex Bin</b><br/>
+                    <hr style="margin: 5px 0; border: 1px solid #555;">
+                    <b>Voters Showed Up:</b> {elevationValue} people<br/>
+                    <b>Density / Error Metric:</b> {colorValue}
+                </div>
+            """,
+            "style": {
+                "backgroundColor": "#222222",
+                "color": "#ffffff",
+                "padding": "12px",
+                "borderRadius": "8px",
+                "boxShadow": "0px 4px 10px rgba(0,0,0,0.5)"
+            }
+        }
     )
     st.pydeck_chart(deck, width="stretch")
 
