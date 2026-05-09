@@ -250,7 +250,7 @@ elif macro_view_mode == "🔥 Electoral Heatmaps & Battlegrounds":
             deck_heatmap = pdk.Deck(
                 layers=[heatmap_layer],
                 initial_view_state=pdk.ViewState(longitude=map_center[1], latitude=map_center[0], zoom=10, pitch=0),
-                map_style="mapbox://styles/mapbox/dark-v10" 
+                map_style="dark" 
             )
             st.pydeck_chart(deck_heatmap, width="stretch")
         else:
