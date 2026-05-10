@@ -9,8 +9,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)  # go up from pages/ to repo root
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 PDF_BASE = os.path.join(DATA_DIR, "เขตเลือกตั้งที่10")
-BCH_BASE = os.path.join(DATA_DIR, "results", "bch", "เขตเลือกตั้งที่10")
-NORMAL_BASE = os.path.join(DATA_DIR, "results", "normal", "เขตเลือกตั้งที่10")
+BCH_BASE = os.path.join(DATA_DIR, "aomsin_result", "bch", "เขตเลือกตั้งที่10")
+NORMAL_BASE = os.path.join(DATA_DIR, "aomsin_result", "normal", "เขตเลือกตั้งที่10")
 
 
 @st.cache_data
