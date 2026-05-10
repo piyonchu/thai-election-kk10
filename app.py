@@ -31,8 +31,10 @@ def main():
     st.markdown("---")
 
     # Pre-load data to trigger the cache mechanism on startup
+    # Pre-load data to trigger the cache mechanism on startup
     with st.spinner("Initializing Data Pipelines and Machine Learning Models..."):
-        df_units, df_scores, df_merged = load_data()
+        # FIX: Explicitly pass the default election type so data_loader renames columns properly
+        df_units, df_scores, df_merged = load_data("Party List")
         
     if not df_units.empty:
         st.success(f"System Online: Successfully ingested {len(df_units)} polling units and {len(df_scores)} relational party score records.")
