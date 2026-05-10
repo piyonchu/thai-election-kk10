@@ -2,15 +2,33 @@ import pandas as pd
 import streamlit as st
 
 @st.cache_data
-def load_data():
+def load_data(election_type="Party List"):
     """
     Loads and caches the cleaned election data.
-    Returns df_units, df_scores, and a merged dataset.
+    Returns df_units, df_scores, and a merged dataset based on election type.
     """
     try:
-        df_units = pd.read_csv("data/data_cleaned_units.csv")
-        df_scores = pd.read_csv("data/data_cleaned_scores.csv")
-        
+        if election_type == "Constituency":
+            df_units = pd.read_csv("data/data_cleaned_constituency_units.csv")
+            df_scores = pd.read_csv("data/data_cleaned_constituency_scores.csv")
+            
+            # Standardize columns for the rest of the application
+            if 'Candidate_Name' in df_scores.columns:
+                df_scores = df_scores.rename(columns={
+                    'Candidate_Name': 'Entity_Name', 
+                    'Candidate_Number': 'Entity_Number'
+                })
+        else:
+            df_units = pd.read_csv("data/data_cleaned_units.csv")
+            df_scores = pd.read_csv("data/data_cleaned_scores.csv")
+            
+            # Standardize columns for the rest of the application
+            if 'Party_Name' in df_scores.columns:
+                df_scores = df_scores.rename(columns={
+                    'Party_Name': 'Entity_Name', 
+                    'Party_Number': 'Entity_Number'
+                })
+
         # Calculate Turnout Percentage safely to avoid division by zero
         df_units['Turnout_Pct'] = (df_units['Voters_Showed_Up'] / df_units['Eligible_Voters']) * 100
         df_units['Invalid_Pct'] = (df_units['Invalid_Ballots'] / df_units['Used_Ballots']) * 100
@@ -26,8 +44,8 @@ def load_data():
 @st.cache_data
 def get_winner_per_unit(df_merged):
     """
-    Identifies the winning party for each specific polling unit.
+    Identifies the winning entity (party or candidate) for each specific polling unit.
     """
     # Sort by score descending and drop duplicates on Unit_ID to keep the highest score
     winners = df_merged.sort_values('Score', ascending=False).drop_duplicates(['Unit_ID'])
-    return winners[['Unit_ID', 'Party_Name', 'Score', 'District', 'Subdistrict', 'Latitude', 'Longitude']]
+    return winners[['Unit_ID', 'Entity_Name', 'Score', 'District', 'Subdistrict', 'Latitude', 'Longitude']]

@@ -53,7 +53,8 @@ def main():
         with col4:
             # Calculate the overall winner of the entire constituency
             if not df_scores.empty:
-                overall_totals = df_scores.groupby('Party_Name')['Score'].sum().sort_values(ascending=False)
+                # FIX: Changed 'Party_Name' to 'Entity_Name'
+                overall_totals = df_scores.groupby('Entity_Name')['Score'].sum().sort_values(ascending=False)
                 winner_name = overall_totals.index[0]
                 winner_votes = overall_totals.iloc[0]
                 st.metric("🏆 Projected Winner", winner_name, f"{int(winner_votes):,} Total Votes")

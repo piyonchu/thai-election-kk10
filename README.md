@@ -90,7 +90,7 @@ The original PDF ballot documents (~1.5 GB) are not included in this repository 
 
 Extract the archive and place the `เขตเลือกตั้งที่10` folder inside the `data/` directory so the structure looks like:
 
-\`\`\`text
+```
 election-project/
 └── data/
     ├── เขตเลือกตั้งที่10/      ← extracted PDFs go here
@@ -101,11 +101,11 @@ election-project/
     └── results/                 ← already in repo
         ├── bch/
         └── normal/
-\`\`\`
+```
 
 > **Note:** The application will still run without the PDFs — the OCR Data Cleaning page just won't show the document preview alongside the JSON editor. Other analytical modules work entirely from the JSON/CSV data.
 
-4. **Launch the application:**
+1. **Launch the application:**
 ```bash
 streamlit run app.py
 ```
