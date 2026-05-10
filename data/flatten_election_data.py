@@ -135,4 +135,4 @@ def process_election_data(base_dir, coord_file):
     print(f"Phase 1 Complete: Processed {len(df_units)} polling units and {len(df_scores)} specific party score records.")
 
 if __name__ == "__main__":
-    process_election_data('./bch', 'location_coordinates_template.csv')
+    process_election_data('./result/bch', 'location_coordinates_template.csv')

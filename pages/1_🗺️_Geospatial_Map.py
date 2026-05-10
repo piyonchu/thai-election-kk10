@@ -7,6 +7,7 @@ from streamlit_folium import st_folium
 import pydeck as pdk
 import sys
 import os
+import hashlib
 
 # Ensure the app can find the utils module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -17,13 +18,17 @@ from utils.data_loader import load_data, get_winner_per_unit
 # =========================================================
 st.set_page_config(page_title="Advanced Geospatial Map", page_icon="🗺️", layout="wide")
 
+# Sidebar Election Type Selector
+st.sidebar.header("📊 Data Source")
+election_mode = st.sidebar.radio("Select Election Mode:", ["Party List", "Constituency"])
+
 st.title("🗺️ Advanced Geospatial Analytics")
 st.markdown("""
 Integrated tactical geospatial intelligence dashboard featuring:
 
 - 📍 Dynamic clustered polling map
 - 🏙️ 3D density visualization (GPU Accelerated)
-- 🔥 Thermal party support heatmaps
+- 🔥 Thermal support heatmaps
 - ⚔️ Spatial battleground mapping
 """)
 st.markdown("---")
@@ -31,15 +36,15 @@ st.markdown("---")
 # =========================================================
 # DATA INGESTION & TYPE CASTING
 # =========================================================
-df_units, df_scores, df_merged = load_data()
+df_units, df_scores, df_merged = load_data(election_mode)
 
 if df_units.empty:
     st.warning("Data not found. Please ensure the data pipeline has been executed.")
     st.stop()
 
 df_winners = get_winner_per_unit(df_merged)
-df_map = pd.merge(df_units, df_winners[['Unit_ID', 'Party_Name', 'Score']], on='Unit_ID', how='left')
-df_map.rename(columns={'Party_Name': 'Winning_Party', 'Score': 'Winning_Votes'}, inplace=True)
+df_map = pd.merge(df_units, df_winners[['Unit_ID', 'Entity_Name', 'Score']], on='Unit_ID', how='left')
+df_map.rename(columns={'Entity_Name': 'Winning_Entity', 'Score': 'Winning_Votes'}, inplace=True)
 df_map = df_map.dropna(subset=['Latitude', 'Longitude'])
 
 if df_map.empty:
@@ -61,19 +66,32 @@ df_map['Lon_Jitter'] = df_map['Longitude'] + np.random.normal(0, 0.003, size=len
 map_center = [df_map['Latitude'].mean(), df_map['Longitude'].mean()]
 
 # =========================================================
-# PARTY COLORS
+# ENTITY COLORS
 # =========================================================
 PARTY_COLORS_HEX = {
     "พรรคประชาชน": "#F47920", "พรรคเพื่อไทย": "#DA251D", "พรรคภูมิใจไทย": "#203A89",
     "พรรคพลังประชารัฐ": "#0054A6", "พรรครวมไทยสร้างชาติ": "#27488B", "พรรคประชาธิปัตย์": "#00AEEF"
 }
-def get_hex_color(party):
-    return PARTY_COLORS_HEX.get(party, "#808080")
+
+def get_hex_color(entity_name, mode):
+    if mode == "Party List":
+        return PARTY_COLORS_HEX.get(entity_name, "#808080")
+    else:
+        # Generate dynamic unique bright color for candidates using hash
+        hash_val = int(hashlib.md5(str(entity_name).encode('utf-8')).hexdigest(), 16)
+        r = (hash_val & 0xFF0000) >> 16
+        g = (hash_val & 0x00FF00) >> 8
+        b = hash_val & 0x0000FF
+        # Ensure brightness
+        r = (r % 128) + 127
+        g = (g % 128) + 127
+        b = (b % 128) + 127
+        return f"#{r:02X}{g:02X}{b:02X}"
 
 # =========================================================
-# STATE-BASED ROUTING (Fixes the WebGL 0x0 Pixel Bug)
+# STATE-BASED ROUTING
 # =========================================================
-st.markdown("### Select Geospatial View")
+st.markdown(f"### Select Geospatial View ({election_mode})")
 macro_view_mode = st.radio(
     "Select Geospatial Layer:",
     [
@@ -98,12 +116,13 @@ if macro_view_mode == "📍 Dynamic Cluster Map":
         marker_cluster = MarkerCluster(name="Polling Units")
 
         for row in df_map.itertuples():
+            color = get_hex_color(row.Winning_Entity, election_mode)
             folium.CircleMarker(
                 location=[row.Lat_Jitter, row.Lon_Jitter],
                 radius=8,
                 tooltip=f"Unit {row.Unit_No}, {row.Subdistrict}",
-                color=get_hex_color(row.Winning_Party),
-                fill=True, fill_color=get_hex_color(row.Winning_Party), fill_opacity=0.8, weight=1.5
+                color=color,
+                fill=True, fill_color=color, fill_opacity=0.8, weight=1.5
             ).add_to(marker_cluster)
 
         marker_cluster.add_to(m)
@@ -126,7 +145,8 @@ if macro_view_mode == "📍 Dynamic Cluster Map":
                 st.success(f"**{unit['District']} District** ➔ {unit['Subdistrict']}")
                 st.write(f"**Village No:** {unit['Village_No']} | **Unit No:** {unit['Unit_No']}")
                 st.markdown("---")
-                st.metric("🏆 Winning Party", unit['Winning_Party'], f"{unit['Winning_Votes']} votes")
+                entity_label = "Winning Party" if election_mode == "Party List" else "Winning Candidate"
+                st.metric(f"🏆 {entity_label}", unit['Winning_Entity'], f"{unit['Winning_Votes']} votes")
                 st.markdown("---")
 
                 col_m1, col_m2 = st.columns(2)
@@ -138,9 +158,9 @@ if macro_view_mode == "📍 Dynamic Cluster Map":
                 col_m4.metric("No Vote Ballots", int(unit['No_Vote_Ballots']))
 
                 st.markdown("---")
-                st.markdown("### Full Party Scoreboard")
+                st.markdown("### Full Scoreboard")
                 unit_scores = df_scores[df_scores['Unit_ID'] == unit['Unit_ID']].sort_values(by='Score', ascending=False)
-                st.dataframe(unit_scores[['Party_Number', 'Party_Name', 'Score']].reset_index(drop=True), width="stretch")
+                st.dataframe(unit_scores[['Entity_Number', 'Entity_Name', 'Score']].reset_index(drop=True), width="stretch")
 
                 if st.button("Clear Selection"):
                     st.rerun()
@@ -165,15 +185,15 @@ if macro_view_mode == "📍 Dynamic Cluster Map":
                 avg_turnout = (visible_units['Voters_Showed_Up'].sum() / visible_units['Eligible_Voters'].sum()) * 100
                 col_v2.metric("Regional Turnout", f"{avg_turnout:.2f}%")
 
-                st.markdown("### Party Performance in Visible Area")
+                st.markdown(f"### {'Party' if election_mode == 'Party List' else 'Candidate'} Performance in Visible Area")
                 visible_scores = df_scores[df_scores['Unit_ID'].isin(visible_units['Unit_ID'])]
-                regional_totals = visible_scores.groupby('Party_Name')['Score'].sum().sort_values(ascending=False).head(10).reset_index()
+                regional_totals = visible_scores.groupby('Entity_Name')['Score'].sum().sort_values(ascending=False).head(10).reset_index()
                 st.dataframe(regional_totals.style.background_gradient(cmap='Blues'), width="stretch")
         else:
             st.info("👈 Zoom and pan around the map to generate regional summaries.")
 
 # =========================================================
-# VIEW 2 — 3D GPU DENSITY (FIXED AGGREGATION & TOOLTIP)
+# VIEW 2 — 3D GPU DENSITY
 # =========================================================
 elif macro_view_mode == "🏙️ 3D Hexagonal Density":
     st.header("🏙️ 3D Spatial Density Engine")
@@ -239,23 +259,23 @@ elif macro_view_mode == "🔥 Electoral Heatmaps & Battlegrounds":
 
     sub_view_mode = st.radio(
         "Select Spatial Layer:", 
-        ["🔥 Party Support Heatmap", "⚔️ Hyper-Competitive Battlegrounds (Margin < 5%)"], 
+        ["🔥 Support Heatmap", "⚔️ Hyper-Competitive Battlegrounds (Margin < 5%)"], 
         horizontal=True
     )
     st.markdown("---")
 
-    if sub_view_mode == "🔥 Party Support Heatmap":
+    if sub_view_mode == "🔥 Support Heatmap":
         st.write("**Thermal mapping of vote concentration.** Brightly glowing areas indicate massive regional support.")
         
-        top_parties = df_merged.groupby('Party_Name')['Score'].sum().nlargest(6).index
-        selected_party = st.selectbox("Select Party to Visualize:", top_parties)
+        top_entities = df_merged.groupby('Entity_Name')['Score'].sum().nlargest(6).index
+        selected_entity = st.selectbox(f"Select {'Party' if election_mode == 'Party List' else 'Candidate'} to Visualize:", top_entities)
 
-        party_data = df_merged[(df_merged['Party_Name'] == selected_party) & (df_merged['Score'] > 0)].copy()
+        entity_data = df_merged[(df_merged['Entity_Name'] == selected_entity) & (df_merged['Score'] > 0)].copy()
 
-        if not party_data.empty:
+        if not entity_data.empty:
             heatmap_layer = pdk.Layer(
                 "HeatmapLayer",
-                data=party_data,
+                data=entity_data,
                 opacity=0.9,
                 get_position=["Longitude", "Latitude"],
                 aggregation="SUM",
@@ -272,12 +292,12 @@ elif macro_view_mode == "🔥 Electoral Heatmaps & Battlegrounds":
             )
             st.pydeck_chart(deck_heatmap, width="stretch")
         else:
-            st.warning("No coordinate data available for this party.")
+            st.warning("No coordinate data available for this selection.")
 
     elif sub_view_mode == "⚔️ Hyper-Competitive Battlegrounds (Margin < 5%)":
         st.write("""
         **Knife-edge races.** These are specific polling units where the difference between the 1st place and 2nd place 
-        party was less than 5%. In political science, these are critical units that decide the entire election.
+        was less than 5%. In political science, these are critical units that decide the entire election.
         """)
         
         sorted_scores = df_merged.sort_values(by=['Unit_ID', 'Score'], ascending=[True, False])
@@ -297,8 +317,8 @@ elif macro_view_mode == "🔥 Electoral Heatmaps & Battlegrounds":
                             'Subdistrict': group.iloc[0]['Subdistrict'],
                             'Latitude': float(group.iloc[0]['Latitude']),
                             'Longitude': float(group.iloc[0]['Longitude']),
-                            'Winner': group.iloc[0]['Party_Name'],
-                            'RunnerUp': group.iloc[1]['Party_Name'],
+                            'Winner': group.iloc[0]['Entity_Name'],
+                            'RunnerUp': group.iloc[1]['Entity_Name'],
                             'Margin_Pct': margin_pct
                         })
 

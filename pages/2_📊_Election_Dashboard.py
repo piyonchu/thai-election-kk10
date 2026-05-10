@@ -26,13 +26,17 @@ st.set_page_config(
     layout="wide"
 )
 
+# Sidebar Election Type Selector
+st.sidebar.header("📊 Data Source")
+election_mode = st.sidebar.radio("Select Election Mode:", ["Party List", "Constituency"])
+
 st.title("📊 Advanced Election Analytics Dashboard")
 
 st.markdown("""
 Comprehensive election intelligence dashboard featuring:
 
 - Macro-level election statistics
-- Party performance analysis
+- Entity performance analysis
 - Ballot composition insights
 - Voter turnout analytics
 - Political fragmentation metrics
@@ -45,7 +49,7 @@ st.markdown("---")
 # =========================================================
 # LOAD DATA
 # =========================================================
-df_units, df_scores, df_merged = load_data()
+df_units, df_scores, df_merged = load_data(election_mode)
 
 if df_units.empty:
     st.warning(
@@ -139,13 +143,14 @@ col4.metric(
 st.markdown("---")
 
 # =========================================================
-# SECTION 1 — TOP PARTIES
+# SECTION 1 — TOP ENTITIES
 # =========================================================
-st.subheader("🏆 Top 10 Parties by Total Votes")
+entity_label = "Parties" if election_mode == "Party List" else "Candidates"
+st.subheader(f"🏆 Top 10 {entity_label} by Total Votes")
 
-party_totals = (
+entity_totals = (
     filtered_merged
-    .groupby('Party_Name')['Score']
+    .groupby('Entity_Name')['Score']
     .sum()
     .reset_index()
     .sort_values(by='Score', ascending=False)
@@ -153,15 +158,15 @@ party_totals = (
 )
 
 fig_bar = px.bar(
-    party_totals,
+    entity_totals,
     x='Score',
-    y='Party_Name',
+    y='Entity_Name',
     orientation='h',
     text='Score',
     color='Score',
     color_continuous_scale='Viridis',
     labels={
-        'Party_Name': 'Political Party',
+        'Entity_Name': 'Political Entity',
         'Score': 'Total Votes'
     },
     height=500
@@ -252,8 +257,8 @@ st.write("""
 The **Effective Number of Parties (ENP)** measures how fragmented
 the political landscape is.
 
-- ENP ≈ 2 → Strong two-party competition
-- ENP > 4 → Highly fragmented multi-party competition
+- ENP ≈ 2 → Strong two-way competition
+- ENP > 4 → Highly fragmented multi-way competition
 """)
 
 st.latex(r"ENP = \frac{1}{\sum_{i=1}^{n} p_i^2}")
@@ -306,7 +311,7 @@ col_enp1, col_enp2 = st.columns([1, 2])
 with col_enp1:
     st.metric(
         "Average ENP",
-        f"{mean_enp:.2f} Parties"
+        f"{mean_enp:.2f} Options"
     )
 
     st.info(
@@ -315,15 +320,11 @@ with col_enp1:
 
 with col_enp2:
     fig_enp = px.box(
-        enp_per_unit,
-        x="Subdistrict",
-        y="ENP",
-        color="Subdistrict",
+        enp_per_unit, x="Subdistrict", y="ENP", color="Subdistrict",
         title="Vote Fragmentation by Subdistrict"
     )
-
     fig_enp.update_layout(showlegend=False)
-
+    fig_enp.update_yaxes(range=[0, 10]) # FIX: Cap Y-axis to 10 so the box plots are readable
     st.plotly_chart(fig_enp, use_container_width=True)
 
 st.markdown("---")
@@ -335,7 +336,7 @@ st.subheader("⚔️ Battleground Analysis")
 
 st.write("""
 Measures the competitiveness of each polling unit by comparing
-the margin between the 1st-place and 2nd-place party.
+the margin between the 1st-place and 2nd-place entity.
 """)
 
 # Sort by score descending
@@ -344,7 +345,7 @@ sorted_scores = filtered_merged.sort_values(
     ascending=[True, False]
 )
 
-# Keep top 2 parties per unit
+# Keep top 2 entities per unit
 ranked_scores = (
     sorted_scores
     .groupby('Unit_ID')
@@ -388,8 +389,8 @@ for unit, group in ranked_scores.groupby('Unit_ID'):
         mov_data.append({
             'Unit_ID': unit,
             'Subdistrict': first_place['Subdistrict'],
-            'Winner': first_place['Party_Name'],
-            'Runner_Up': second_place['Party_Name'],
+            'Winner': first_place['Entity_Name'],
+            'Runner_Up': second_place['Entity_Name'],
             'Vote_Margin': vote_diff,
             'Margin_Pct': pct_diff,
             'Category': category
@@ -459,33 +460,33 @@ st.subheader("🎯 Hierarchical Vote Distribution")
 st.write("""
 Interactive drill-down visualization:
 
-District ➔ Subdistrict ➔ Party
+District ➔ Subdistrict ➔ Entity
 """)
 
 sunburst_data = filtered_merged.copy()
 
-# Total votes per party
-party_totals_sb = (
+# Total votes per entity
+entity_totals_sb = (
     sunburst_data
-    .groupby('Party_Name')['Score']
+    .groupby('Entity_Name')['Score']
     .sum()
     .reset_index()
 )
 
-# Keep top parties only
-top_parties = (
-    party_totals_sb
+# Keep top entities only
+top_entities_list = (
+    entity_totals_sb
     .sort_values('Score', ascending=False)
-    .head(6)['Party_Name']
+    .head(6)['Entity_Name']
     .tolist()
 )
 
-sunburst_data['Party_Grouped'] = (
-    sunburst_data['Party_Name']
+sunburst_data['Entity_Grouped'] = (
+    sunburst_data['Entity_Name']
     .apply(
         lambda x:
-        x if x in top_parties
-        else 'Other Minor Parties'
+        x if x in top_entities_list
+        else 'Other Minor'
     )
 )
 
@@ -493,7 +494,7 @@ sunburst_data['Party_Grouped'] = (
 sunburst_agg = (
     sunburst_data
     .groupby(
-        ['District', 'Subdistrict', 'Party_Grouped']
+        ['District', 'Subdistrict', 'Entity_Grouped']
     )['Score']
     .sum()
     .reset_index()
@@ -508,11 +509,11 @@ fig_sunburst = px.sunburst(
     path=[
         'District',
         'Subdistrict',
-        'Party_Grouped'
+        'Entity_Grouped'
     ],
     values='Score',
     title="Vote Distribution Hierarchy",
-    color='Party_Grouped',
+    color='Entity_Grouped',
     color_discrete_sequence=px.colors.qualitative.Pastel
 )
 

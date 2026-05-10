@@ -1,4 +1,3 @@
-
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
@@ -23,6 +22,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# Sidebar Election Type Selector
+st.sidebar.header("📊 Data Source")
+election_mode = st.sidebar.radio("Select Election Mode:", ["Party List", "Constituency"])
+
 st.title("🚨 Advanced Algorithmic Fraud Detection")
 st.markdown(
     "Applying statistical analysis and machine learning techniques "
@@ -31,7 +34,7 @@ st.markdown(
 st.markdown("---")
 
 # Load data
-df_units, df_scores, df_merged = load_data()
+df_units, df_scores, df_merged = load_data(election_mode)
 
 if df_units.empty:
     st.warning("Data not found. Please ensure the data pipeline has been executed.")
@@ -317,47 +320,36 @@ with tab4:
 # TAB 5 — VOTE BUYING FOOTPRINT
 # =========================================================
 with tab5:
-    st.header("💸 Symmetric Number Vote-Buying Footprint")
+    st.header("💸 Symmetric Vote-Buying Footprint (Double-X)")
 
     st.write("""
-    **Hypothesis:** Vote-buyers may instruct voters to mark the same number
-    on both ballots to reduce confusion.
-
-    If a corrupt constituency candidate is **Number X**,
-    we may observe statistically impossible surges for the
-    party-list candidate that also happens to be **Number X**.
+    **Hypothesis (การกาเบอร์เดียวกัน):** Vote-buyers instruct voters to mark the *same number* on both the 
+    Constituency (เขต) and Party-List (บัญชีรายชื่อ) ballots. 
+    
+    This cross-references **both datasets** to flag polling units where a Party-List party received a 
+    statistically impossible spike in votes **AND** that party's number exactly matched the local Constituency Candidate.
     """)
 
-    target_num = st.number_input(
-        "Enter the suspected constituency candidate number:",
-        min_value=1,
-        max_value=60,
-        value=5
-    )
+    # Explicitly load both datasets just for this cross-reference analysis
+    _, df_party_scores, _ = load_data("Party List")
+    _, df_const_scores, _ = load_data("Constituency")
 
-    st.markdown(
-        f"### Scanning for abnormal surges for Party List Number {target_num}"
-    )
+    all_matches = detect_symmetric_vote_buying(df_party_scores, df_const_scores)
 
-    suspicious_spikes = detect_symmetric_vote_buying(
-        df_scores,
-        target_num
-    )
-
-    if suspicious_spikes.empty:
-        st.success(
-            f"✅ No anomalous voting spikes detected for Party #{target_num}."
-        )
+    if all_matches.empty:
+        st.warning("⚠️ No data available to cross-reference (Ensure both Party List and Constituency CSVs exist).")
     else:
-        st.error(
-            f"🚨 Detected {len(suspicious_spikes)} polling units "
-            f"with suspicious vote spikes for Party #{target_num}."
-        )
+        # Define anomaly threshold
+        suspicious_spikes = all_matches[all_matches['Party_Spike_Z_Score'] > 2.5]
 
+        if suspicious_spikes.empty:
+            st.success("✅ No extreme 'Double-X' symmetric vote-buying anomalies detected (Z-Score > 2.5). Showing general matching trends below.")
+        else:
+            st.error(f"🚨 Detected {len(suspicious_spikes)} highly suspicious units matching the 'Double-X' footprint (Z-Score > 2.5).")
+
+        st.markdown("### 📋 All 'Double-X' Match Occurrences (Sorted by Anomaly Spike)")
         st.dataframe(
-            suspicious_spikes.style.format({
-                'Party_Spike_Z_Score': '{:.2f}'
-            }).background_gradient(cmap='Reds'),
+            all_matches.style.format({'Party_Spike_Z_Score': '{:.2f}'})
+            .background_gradient(cmap='Reds', subset=['Party_Spike_Z_Score']),
             use_container_width=True
         )
-
