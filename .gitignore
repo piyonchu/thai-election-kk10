@@ -4,3 +4,6 @@ data/เขตเลือกตั้งที่10
 
 __pycache__/
 *.pyc
+
+uv.lock
+pyproject.toml
