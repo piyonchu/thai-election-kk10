@@ -8,7 +8,7 @@ import json
 import os
 import io
 
-API_KEY = "AIzaSyAyD_QwL1nTzwprwOwxqv9A-owYdx4GC2w"
+API_KEY = "[ENCRYPTION_KEY]"
 MODEL_NAME = "gemini-3-flash-preview"
 
 PDF_PATH = r"C:\Users\aomsi\Downloads\เขตเลือกตั้งที่ 10 -20260501T150038Z-3-001\เขตเลือกตั้งที่ 10\อำเภอ หนองสองห้อง\ใน นอก นอกราช\กนค ชุด10 เขต10.pdf"

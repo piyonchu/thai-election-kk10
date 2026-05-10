@@ -19,7 +19,7 @@ import time
 import sys
 
 # ── Configuration ───────────────────────────────────────────────────────────
-API_KEY = "AIzaSyAyD_QwL1nTzwprwOwxqv9A-owYdx4GC2w"
+API_KEY = "[ENCRYPTION_KEY]"
 MODEL_NAME = "gemini-3-flash-preview"
 
 INPUT_DIR = r"C:\Users\aomsi\Downloads\เขตเลือกตั้งที่ 10 -20260501T150038Z-3-001\เขตเลือกตั้งที่ 10\อำเภอ หนองสองห้อง\ใน นอก นอกราช"
